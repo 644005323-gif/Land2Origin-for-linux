@@ -1,0 +1,14 @@
+{
+  "workflow_id": "cv",
+  "version": "1.0.0",
+  "label": "循环伏安图",
+  "domain": "electrochemistry",
+  "enabled": true,
+  "runner": "external_origin_electrochem",
+  "renderer": "origin_external_cv.py",
+  "status": "external_renderer_verified_normalized_input_only",
+  "delivery_grade": "normalized_input_only",
+  "input_contract": {"format": "normalized_series_v1", "extensions": [".csv"], "source_count": 1,
+                     "roles": ["curve"], "units": {"x": "V", "y": "mA"}},
+  "required_parameters": []
+}

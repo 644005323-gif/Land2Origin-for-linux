@@ -1,0 +1,151 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Run one NDAX Origin job through a resident, background Origin session.
+#
+# external is the fast target path: isolated Wine CPython 3.11 runs external
+# originpro against Origin's Automation server.  The auto route enables it
+# only for the first-cycle renderer that has passed real-data validation.
+# Other plot types retain the socket backend until independently qualified.
+# Set NDAX_ORIGIN_MODE=embedded to use the older console-based fallback.
+# Set NDAX_ORIGIN_MODE=socket to force the established fallback backend.
+complete_file=${1:?complete file path is required}
+timeout=${2:-420}
+mode=${NDAX_ORIGIN_MODE:-auto}
+job_file=/home/sd1/Desktop/Origin-VM-Share/ndax_cycle_plot_job.json
+origin_script='exec(compile(open(r"Z:\\home\\origin\\share\\ndax_cycle_origin_guest.py", encoding="utf-8").read(), "ndax_run.py", "exec"))'
+
+if [[ "$mode" == auto ]]; then
+  readarray -t job_route < <(python3 - "$job_file" 2>/dev/null <<'PY' || true
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    job = json.load(handle)
+    print(job.get("plot_type", ""))
+    print(job.get("renderer", ""))
+PY
+)
+  plot_type=${job_route[0]:-}
+  renderer=${job_route[1]:-}
+  case "$plot_type" in
+    first_cycle_charge_discharge) mode=external ;;
+    *)
+      if [[ "$renderer" == external_* ]]; then
+        mode=external
+      else
+        mode=socket
+      fi
+      ;;
+  esac
+fi
+
+if [[ "$mode" == external ]]; then
+  ssh origin-vm "set -eu
+timeout $timeout /home/origin/run_originpro_external.sh Z:\\\\home\\\\origin\\\\share\\\\ndax_cycle_origin_external.py"
+  if [[ -s "$complete_file" ]]; then
+    exit 0
+  fi
+  echo "Origin external originpro job returned without completion manifest: $complete_file" >&2
+  exit 1
+fi
+
+if [[ "$mode" == direct_com ]]; then
+  ssh origin-vm "set -eu
+if ! pgrep -x Xvfb >/dev/null; then
+  nohup Xvfb :100 -screen 0 1024x768x24 -ac >/tmp/origin-xvfb.log 2>&1 &
+  sleep 2
+fi
+if ! pgrep -x Origin64.exe >/dev/null; then
+  nohup env DISPLAY=:100 BOX64_DYNAREC=0 BOX64_LOG=0 /home/origin/origin-wine.sh 'C:\\Program Files\\OriginLab\\Origin2024b\\Origin64.exe' >/tmp/origin-gui.log 2>&1 &
+fi
+ready=0
+for i in \$(seq 1 360); do
+  if timeout 15s env DISPLAY=:100 BOX64_DYNAREC=0 BOX64_LOG=0 \\
+    /home/origin/origin-wine.sh 'C:\\ndax-external-test\\cpython311\\python.exe' \\
+    'C:\\ndax-external-test\\ndax_origin_com_execute.py' 'sec -poc' >/tmp/origin-direct-com-ready.log 2>&1; then
+    ready=1
+    break
+  fi
+  sleep 1
+done
+test \"\$ready\" = 1
+timeout $timeout env DISPLAY=:100 BOX64_DYNAREC=0 BOX64_LOG=0 \\
+  /home/origin/origin-wine.sh 'C:\\ndax-external-test\\cpython311\\python.exe' \\
+  'C:\\ndax-external-test\\ndax_origin_com_run_shared_job.py'"
+  if [[ -s "$complete_file" ]]; then
+    exit 0
+  fi
+  echo "Origin direct-COM job returned without completion manifest: $complete_file" >&2
+  exit 1
+fi
+
+if [[ "$mode" == socket ]]; then
+  ssh origin-vm "set -eu
+if ! python3 /home/origin/share/ndax_origin_socket_client.py ping --timeout 1 >/dev/null 2>&1; then
+  /home/origin/share/ndax_origin_socket_bootstrap.sh
+fi
+python3 /home/origin/share/ndax_origin_socket_client.py run --timeout $timeout"
+  if [[ -s "$complete_file" ]]; then
+    exit 0
+  fi
+  echo "Origin socket job returned without completion manifest: $complete_file" >&2
+  exit 1
+fi
+
+ssh origin-vm "set -eu
+if ! pgrep -x Xvfb >/dev/null; then
+  nohup Xvfb :100 -screen 0 1024x768x24 -ac >/tmp/origin-xvfb.log 2>&1 &
+  sleep 2
+fi
+if ! pgrep -x Origin64.exe >/dev/null; then
+  nohup env DISPLAY=:100 BOX64_DYNAREC=0 BOX64_LOG=0 /home/origin/origin-wine.sh 'C:\\Program Files\\OriginLab\\Origin2024b\\Origin64.exe' >/tmp/origin-gui.log 2>&1 &
+fi
+if test '$mode' = external; then
+  if test ! -f /home/origin/share/pyext/OriginExt/_OriginExt.pyd; then
+    mkdir -p /home/origin/share/pyext
+    python3 -c \"import zipfile; zipfile.ZipFile('/home/origin/share/OriginExt-1.2.5-cp311-none-win_amd64.whl').extractall('/home/origin/share/pyext')\"
+  fi
+  nohup env DISPLAY=:100 BOX64_DYNAREC=0 BOX64_LOG=0 \\
+    PYTHONHOME='C:\\Program Files\\OriginLab\\Origin2024b' \\
+    PYTHONPATH='C:\\Program Files\\OriginLab\\Origin2024b\\python311.zip;C:\\Program Files\\OriginLab\\Origin2024b\\Py;C:\\ProgramData\\OriginLab\\101b\\PyPackage\\Py3;Z:\\home\\origin\\share\\pyext' \\
+    /home/origin/origin-wine.sh 'C:\\Program Files\\OriginLab\\Origin2024b\\64Bit\\PyDLLs\\python.exe' \\
+    'Z:\\home\\origin\\share\\ndax_cycle_origin_external.py' >/tmp/origin-ndax-external.log 2>&1 &
+  exit 0
+fi
+for i in \$(seq 1 360); do
+  reg=\$(DISPLAY=:100 xdotool search --name '^注册$' 2>/dev/null | tail -1 || true)
+  if test -n \"\$reg\"; then
+    DISPLAY=:100 xdotool mousemove 267 523 click 1
+    sleep 1
+    DISPLAY=:100 xdotool mousemove 740 590 click 1
+  fi
+  wid=\$(DISPLAY=:100 xdotool search --name 'Python 3 控制台' 2>/dev/null | tail -1 || true)
+  if test -n \"\$wid\"; then
+    break
+  fi
+  if test \$((i % 10)) -eq 1; then
+    main=\$(DISPLAY=:100 xdotool search --name 'OriginPro 2024b' 2>/dev/null | tail -1 || true)
+    if test -n \"\$main\"; then
+      DISPLAY=:100 xdotool windowfocus \"\$main\" || true
+      DISPLAY=:100 xdotool key --window \"\$main\" ctrl+shift+p || true
+    fi
+  fi
+  sleep 1
+done
+test -n \"\${wid:-}\"
+DISPLAY=:100 xdotool windowmap \"\$wid\"
+DISPLAY=:100 xdotool windowraise \"\$wid\"
+DISPLAY=:100 xdotool mousemove --window \"\$wid\" 300 430 click 1
+DISPLAY=:100 xdotool key ctrl+u
+DISPLAY=:100 xdotool type --delay 1 '$origin_script'
+DISPLAY=:100 xdotool key Return"
+
+for ((i=0; i<timeout; i++)); do
+    if [[ -s "$complete_file" ]]; then
+        exit 0
+    fi
+    sleep 1
+done
+echo "Origin NDAX job timed out: $complete_file" >&2
+exit 1

@@ -1,0 +1,13 @@
+{
+  "workflow_id": "rate_capability",
+  "version": "1.0.0",
+  "label": "倍率性能图",
+  "domain": "electrochemistry",
+  "enabled": true,
+  "runner": "external_origin_electrochem",
+  "renderer": "origin_external_rate_capability.py",
+  "status": "external_renderer_verified_rate_annotation_pending",
+  "delivery_grade": "draft_rate_layout",
+  "input_contract": {"format": "neware_ndax_v14", "extensions": [".ndax"], "source_count": 1},
+  "required_parameters": ["sample_name", "rate_schedule"]
+}

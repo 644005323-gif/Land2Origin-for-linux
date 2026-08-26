@@ -1,0 +1,13 @@
+{
+  "workflow_id": "cycle_performance_dual_y",
+  "version": "1.0.0",
+  "label": "循环性能双 Y 轴图",
+  "domain": "electrochemistry",
+  "enabled": true,
+  "runner": "external_origin_electrochem",
+  "renderer": "origin_external_cycle_performance_dual_y.py",
+  "status": "external_renderer_verified",
+  "delivery_grade": "layout_review_required",
+  "input_contract": {"format": "neware_ndax_v14", "extensions": [".ndax"], "source_count": 1},
+  "required_parameters": ["sample_name", "rate_label", "cycle_numbers"]
+}

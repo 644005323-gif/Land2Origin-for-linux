@@ -1,0 +1,13 @@
+{
+  "workflow_id": "ftir",
+  "version": "0.1.0",
+  "label": "FTIR 红外光谱图",
+  "domain": "spectroscopy",
+  "enabled": false,
+  "runner": "not_implemented",
+  "renderer": "none",
+  "status": "registered_not_connected",
+  "delivery_grade": "unavailable",
+  "input_contract": {"format": "pending", "extensions": [".csv", ".txt"], "source_count": 1},
+  "required_parameters": []
+}

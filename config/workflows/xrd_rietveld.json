@@ -1,0 +1,14 @@
+{
+  "workflow_id": "xrd_rietveld",
+  "version": "1.0.0",
+  "label": "XRD Rietveld 精修",
+  "domain": "diffraction",
+  "enabled": true,
+  "runner": "legacy_xrd_pre_origin",
+  "renderer": "nfpp_xrd_rietveld_origin",
+  "status": "managed_by_existing_guarded_workflow",
+  "delivery_grade": "separate_workflow",
+  "input_contract": {"format": "xrd_controlled_preflight", "extensions": [".raw", ".xy", ".xye"],
+                     "source_count": 1, "do_not_route_through_echem": true},
+  "required_parameters": []
+}

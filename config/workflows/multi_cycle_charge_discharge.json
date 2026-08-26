@@ -1,0 +1,13 @@
+{
+  "workflow_id": "multi_cycle_charge_discharge",
+  "version": "1.0.0",
+  "label": "多循环充放电图",
+  "domain": "electrochemistry",
+  "enabled": true,
+  "runner": "external_origin_electrochem",
+  "renderer": "origin_external_multi_cycle_charge_discharge.py",
+  "status": "external_renderer_verified",
+  "delivery_grade": "layout_review_required",
+  "input_contract": {"format": "neware_ndax_v14", "extensions": [".ndax"], "source_count": 1},
+  "required_parameters": ["sample_name", "rate_label", "cycle_numbers"]
+}
